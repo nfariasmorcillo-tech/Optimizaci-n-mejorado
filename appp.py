@@ -62,6 +62,7 @@ if calcular:
                 c2.latex(rf"f_y = \frac{{\partial f}}{{\partial y}} = {sp.latex(fy)}")
                 
                 st.subheader("Sistema a resolver para puntos estacionarios:")
+                # Fuera del entorno evaluativo directo de SymPy para evitar errores de sintaxis LaTeX
                 sistema_libre = r"\begin{cases} " + sp.latex(fx) + r" = 0 \\ " + sp.latex(fy) + r" = 0 \end{cases}"
                 st.latex(sistema_libre)
                 
@@ -83,7 +84,6 @@ if calcular:
                             st.markdown("### **Paso 2: Reemplazo en la segunda ecuación**")
                             st.markdown(f"Sustituimos el valor o equivalencia de ${sp.latex(x)}$ dentro de $f_y = 0$:")
                             
-                            # Sustitución explícita en SymPy
                             fy_sustituida = fy.subs(x, despeje_x[0])
                             st.latex(rf"{sp.latex(fy)} = 0 \implies {sp.latex(fy_sustituida)} = 0")
                             
@@ -172,12 +172,13 @@ if calcular:
                 # Resolver
                 puntos = sp.solve([Lx, Ly, Llam], (x, y, lam), dict=True)
                 
-                # --- DESARROLLO PASO A PASO REAL CON RESTRICCIONES ---
+                # --- DESARROLLO PASO A PASO PEDAGÓGICO REFORZADO (SIN PÉRDIDA DE VALORES) ---
                 with st.expander("🔍 Ver desarrollo algebraico paso a paso del Lagrangiano"):
                     st.markdown("### **Paso 1: Expresar u obtener el valor de $\lambda$**")
-                    st.markdown("Aislamos $\lambda$ de las condiciones derivadas respecto a las variables espaciales:")
+                    st.markdown("Aislamos $\lambda$ de las condiciones derivadas respecto a las variables espaciales para poder igualarlas:")
                     
                     try:
+                        # Despejar lambda de forma explícita
                         sol_lam_x = sp.solve(Lx, lam)
                         sol_lam_y = sp.solve(Ly, lam)
                         
@@ -187,26 +188,45 @@ if calcular:
                             st.markdown("De $\mathcal{L}_y = 0$ obtenemos:")
                             st.latex(rf"\lambda = {sp.latex(sol_lam_y[0])}")
                             
-                            st.markdown("### **Paso 2: Igualación de expresiones (Eliminación de $\lambda$)**")
-                            st.markdown("Igualamos ambas equivalencias para construir una relación directa entre $x$ e $y$:")
+                            st.markdown("### **Paso 2: Igualación de expresiones y Factorización (Evitando pérdida de raíces)**")
+                            st.markdown("Igualamos ambas expresiones para eliminar el parámetro $\lambda$:")
                             st.latex(rf"{sp.latex(sol_lam_x[0])} = {sp.latex(sol_lam_y[0])}")
                             
-                            relacion = sol_lam_x[0] - sol_lam_y[0]
-                            despeje_y_en_x = sp.solve(relacion, y)
-                            if despeje_y_en_x:
-                                st.markdown(f"Despejando ${sp.latex(y)}$ en función de ${sp.latex(x)}$ obtenemos:")
-                                st.latex(rf"{sp.latex(y)} = {sp.latex(despeje_y_en_x[0])}")
+                            # Forzar la multiplicación en cruz reuniendo numeradores y denominadores
+                            num_x, den_x = sp.fraction(sol_lam_x[0])
+                            num_y, den_y = sp.fraction(sol_lam_y[0])
+                            
+                            # Expresión cruzada multiplicada: num_x * den_y - num_y * den_x = 0
+                            ecuacion_cruzada = num_x * den_y - num_y * den_x
+                            ecuacion_factorizada = sp.factor(ecuacion_cruzada)
+                            
+                            st.markdown("Para resolver correctamente sin perder soluciones equivalentes por división descuidada, multiplicamos en cruz y agrupamos los términos a un solo miembro para **factorizar**:")
+                            st.latex(rf"{sp.latex(ecuacion_cruzada)} = 0 \implies {sp.latex(ecuacion_factorizada)} = 0")
+                            
+                            # Obtener las ramas explícitas de la factorización
+                            despejes_y = sp.solve(ecuacion_factorizada, y)
+                            st.markdown("De la factorización se desprenden las siguientes relaciones o caminos legítimos para el sistema:")
+                            for d_y in despejes_y:
+                                st.latex(rf"y = {sp.latex(d_y)}")
                                 
-                                st.markdown("### **Paso 3: Reemplazo final en la restricción $g(x,y)=0$**")
-                                st.markdown("Colocamos la equivalencia obtenida dentro de la condición de la restricción:")
-                                g_sustituida = g.subs(y, despeje_y_en_x[0])
-                                st.latex(rf"{sp.latex(g)} = 0 \implies {sp.latex(g_sustituida)} = 0")
-                    except Exception:
-                        st.markdown("El sistema posee términos no lineales complejos. SymPy realiza el método de sustitución generalizada por matrices simbólicas.")
+                            st.markdown("### **Paso 3: Reemplazo de todas las ramas en la restricción $g(x,y)=0$**")
+                            st.markdown("Sustituimos de forma independiente cada una de las relaciones halladas dentro de la condición de la restricción para no omitir ninguna coordenada real:")
+                            
+                            for idx_d, d_y in enumerate(despejes_y):
+                                g_sustituida = g.subs(y, d_y)
+                                st.markdown(rf"* **Para el camino $y = {sp.latex(d_y)}$:**")
+                                st.latex(rf"g({sp.latex(x)}, {sp.latex(d_y)}) = 0 \implies {sp.latex(g_sustituida)} = 0")
+                                raices_x = sp.solve(g_sustituida, x)
+                                st.markdown(rf"    Dando como raíces para $x$: ${sp.latex(raices_x)}$")
+                                
+                    except Exception as e:
+                        st.markdown("El sistema posee términos algebraicos de alto orden o curvas de nivel no lineales. SymPy evalúa raíces simultáneas mediante matrices cruzadas...")
                     
                     st.markdown("### **Paso 4: Soluciones del Sistema Completo**")
-                    st.markdown("Sustituyendo los valores críticos de vuelta para hallar la tasa de cambio $\lambda$, el conjunto final de soluciones es:")
+                    st.markdown("Al evaluar exhaustivamente todos los caminos factorizados y sus respectivos valores correspondientes de $\lambda$, el conjunto final y completo de soluciones es:")
                     for idx, p in enumerate(puntos):
+                        if p[x].evalf().is_imaginary or p[y].evalf().is_imaginary:
+                            continue
                         st.latex(rf"\text{{Solución }}{idx+1}: \quad {sp.latex(x)} = {sp.latex(p[x])}, \quad {sp.latex(y)} = {sp.latex(p[y])}, \quad \lambda = {sp.latex(p[lam])}")
 
                 st.metric(label="Cantidad de puntos críticos encontrados", value=len(puntos))
