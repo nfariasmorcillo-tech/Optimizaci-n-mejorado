@@ -6,7 +6,7 @@ import pandas as pd
 st.set_page_config(page_title="Laboratorio de Optimización", page_icon="🧮", layout="wide")
 
 st.title("🧮 Laboratorio de Optimización Matemática")
-st.markdown("Herramienta pedagógica para el análisis de óptimos locales con y sin restricciones.")
+st.markdown("Análisis de óptimos locales con y sin restricciones.")
 
 # Barra lateral para el ingreso de datos
 st.sidebar.header("📥 Configuración del Ejercicio")
